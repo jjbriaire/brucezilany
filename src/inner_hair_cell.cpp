@@ -453,7 +453,9 @@ std::vector<double> inner_hair_cell(
 	if (species == CAT)
 		utils::validate_parameter(cf, 124.9, 40.1e3, "cf");
 	else
-		utils::validate_parameter(cf, 124.9, 20.1e3, "cf");
+		/* local NH_Vocoder build: human lower CF bound lowered from 124.9 to 79.9 Hz (F0 of all voices).
+		   80-125 Hz is outside the range the BEZ2018a authors fitted and checked: extrapolation. */
+		utils::validate_parameter(cf, 79.9, 20.1e3, "cf");
 
 	utils::validate_parameter(n_rep, 1, std::numeric_limits<int>::max(), "n_rep");
 	utils::validate_parameter(stimulus.simulation_duration, stimulus.stimulus_duration,
