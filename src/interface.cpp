@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <pybind11/pybind11.h>
 #include <pybind11/functional.h>
 #include <pybind11/numpy.h>
@@ -191,6 +192,15 @@ py::array_t<double> numpy_ihc(const stimulus::Stimulus &stimulus, double cf, int
     return vector1d_to_numpy(inner_hair_cell(stimulus, cf, n_rep, cohc, cihc, species));
 }
 
+py::array_t<double> numpy_ihc_stages(const stimulus::Stimulus &stimulus, double cf, double cohc, double cihc, Species species)
+{
+    const auto v = inner_hair_cell_stages(stimulus, cf, cohc, cihc, species);
+    const py::ssize_t n = static_cast<py::ssize_t>(v.size() / 3);
+    py::array_t<double> out({static_cast<py::ssize_t>(3), n});
+    std::copy(v.begin(), v.end(), out.mutable_data());
+    return out;
+}
+
 py::array_t<double> numpy_map_syn(const std::vector<double> &ihc_output, double spontaneous_firing_rate, double characteristic_frequency, double time_resolution, SynapseMapping mapping_function)
 {
     return vector1d_to_numpy(synapse_mapping::map(ihc_output, spontaneous_firing_rate,
@@ -205,6 +215,13 @@ void define_model_functions(py::module m)
           py::arg("stimulus"),
           py::arg("cf") = 1e3,
           py::arg("n_rep") = 1,
+          py::arg("cohc") = 1,
+          py::arg("cihc") = 1,
+          py::arg("species") = HUMAN_SHERA);
+
+    m.def("inner_hair_cell_stages", &numpy_ihc_stages,
+          py::arg("stimulus"),
+          py::arg("cf") = 1e3,
           py::arg("cohc") = 1,
           py::arg("cihc") = 1,
           py::arg("species") = HUMAN_SHERA);

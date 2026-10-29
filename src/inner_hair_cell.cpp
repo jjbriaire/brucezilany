@@ -1,3 +1,4 @@
+#include <algorithm>
 /* This is the BEZ2018 version of the code for auditory periphery model from the Carney, Bruce and Zilany labs.
  *
  * This release implements the version of the model described in:
@@ -442,13 +443,19 @@ namespace ihc
 }
 
 
-std::vector<double> inner_hair_cell(
+/* local NH_Vocoder build: the per-sample loop of inner_hair_cell, shared with inner_hair_cell_stages so
+   that the IHC output of both is identical by construction. Writes the IHC output (and, when c1 / c2 are
+   not null, the C1 and C2 chirp-filter outputs), each shifted by the same delay_point, into arrays of
+   stimulus.n_simulation_timesteps samples (the caller zero-initialises them). */
+static void inner_hair_cell_loop(
 	const stimulus::Stimulus& stimulus,
 	const double cf,
-	const int n_rep,
 	const double cohc,
 	const double cihc,
-	const Species species)
+	const Species species,
+	double* ihc,
+	double* c1,
+	double* c2)
 {
 	if (species == CAT)
 		utils::validate_parameter(cf, 124.9, 40.1e3, "cf");
@@ -457,13 +464,10 @@ std::vector<double> inner_hair_cell(
 		   80-125 Hz is outside the range the BEZ2018a authors fitted and checked: extrapolation. */
 		utils::validate_parameter(cf, 79.9, 20.1e3, "cf");
 
-	utils::validate_parameter(n_rep, 1, std::numeric_limits<int>::max(), "n_rep");
 	utils::validate_parameter(stimulus.simulation_duration, stimulus.stimulus_duration,
 	                          std::numeric_limits<double>::infinity(), "stimulus.simulation_duration");
 	utils::validate_parameter(cohc, 0., 1., "cohc");
 	utils::validate_parameter(cihc, 0., 1., "cihc");
-
-	std::vector<double> output(stimulus.n_simulation_timesteps * n_rep);
 
 	ihc::MiddleEarFilter me_filter(stimulus.time_resolution, species);
 	ihc::WideBandGammaToneFilter wb_filter(stimulus.time_resolution, cf, species, cohc);
@@ -499,8 +503,43 @@ std::vector<double> inner_hair_cell(
 		const double ihc_out = ihc_low_pass_filter(c1_ihc + c2_ihc);
 
 		if (n + delay_point < stimulus.n_simulation_timesteps)
-			for (int j = 0; j < n_rep; j++)
-				output[(stimulus.n_simulation_timesteps * j) + n + delay_point] = ihc_out;
+		{
+			ihc[n + delay_point] = ihc_out;
+			if (c1 != nullptr)
+				c1[n + delay_point] = c1_filter_out;
+			if (c2 != nullptr)
+				c2[n + delay_point] = c2_filter_out;
+		}
 	}
+}
+
+std::vector<double> inner_hair_cell(
+	const stimulus::Stimulus& stimulus,
+	const double cf,
+	const int n_rep,
+	const double cohc,
+	const double cihc,
+	const Species species)
+{
+	utils::validate_parameter(n_rep, 1, std::numeric_limits<int>::max(), "n_rep");
+	const size_t n_sim = stimulus.n_simulation_timesteps;
+	std::vector<double> output(n_sim * n_rep);
+	inner_hair_cell_loop(stimulus, cf, cohc, cihc, species, output.data(), nullptr, nullptr);
+	for (int j = 1; j < n_rep; j++)
+		std::copy(output.begin(), output.begin() + n_sim, output.begin() + n_sim * j);
+	return output;
+}
+
+std::vector<double> inner_hair_cell_stages(
+	const stimulus::Stimulus& stimulus,
+	const double cf,
+	const double cohc,
+	const double cihc,
+	const Species species)
+{
+	const size_t n_sim = stimulus.n_simulation_timesteps;
+	std::vector<double> output(3 * n_sim);
+	inner_hair_cell_loop(stimulus, cf, cohc, cihc, species, output.data() + 2 * n_sim, output.data(),
+	                     output.data() + n_sim);
 	return output;
 }

@@ -177,3 +177,18 @@ std::vector<double> inner_hair_cell(
 	double cihc = 1,
 	Species species = HUMAN_SHERA
 );
+
+/**
+ * Local NH_Vocoder build: the C1 and C2 chirp-filter outputs (basilar-membrane signals before their
+ * transduction functions) next to the IHC output, for one repetition.
+ *
+ * @returns 3 x n_simulation_timesteps values, row-major: C1 output, C2 output, IHC output (identical to
+ *    inner_hair_cell with n_rep = 1); every row shifted by the same delay_point.
+ */
+std::vector<double> inner_hair_cell_stages(
+	const stimulus::Stimulus& stimulus,
+	double cf = 1e3,
+	double cohc = 1,
+	double cihc = 1,
+	Species species = HUMAN_SHERA
+);
