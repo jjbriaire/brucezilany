@@ -95,6 +95,8 @@ namespace ihc
 		PostOhcFilter(double cohc, double bm_tau_min, double bm_tau_max, double asym);
 
 		double operator()(double x) const;
+		//! local NH_Vocoder build: the same with the OHC factor of this sample (time-varying cohc, MOC hook)
+		double operator()(double x, double cohc_now) const;
 	};
 
 	struct LogarithmicTransductionFunction
@@ -189,6 +191,30 @@ std::vector<double> inner_hair_cell_stages(
 	const stimulus::Stimulus& stimulus,
 	double cf = 1e3,
 	double cohc = 1,
+	double cihc = 1,
+	Species species = HUMAN_SHERA
+);
+
+/**
+ * Local NH_Vocoder build: inner_hair_cell (n_rep = 1) with a per-sample OHC factor cohc_t (the MOC hook of
+ * Guest, Farhadi & Carney 2026, Eq. 3: tau_C1[n] = cohc_t[n] (tau_nl[n] - tau_min) + tau_min, i.e. cohc_t = c(t) COHC).
+ * The wide-band control-path filter is initialised with cohc_t[0]. cohc_t needs at least
+ * n_simulation_timesteps values in [0, 1] (std::invalid_argument otherwise). A constant cohc_t reproduces the
+ * scalar call exactly.
+ */
+std::vector<double> inner_hair_cell_tv(
+	const stimulus::Stimulus& stimulus,
+	double cf,
+	const std::vector<double>& cohc_t,
+	double cihc = 1,
+	Species species = HUMAN_SHERA
+);
+
+//! Local NH_Vocoder build: inner_hair_cell_stages with a per-sample OHC factor (see inner_hair_cell_tv).
+std::vector<double> inner_hair_cell_stages_tv(
+	const stimulus::Stimulus& stimulus,
+	double cf,
+	const std::vector<double>& cohc_t,
 	double cihc = 1,
 	Species species = HUMAN_SHERA
 );

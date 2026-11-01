@@ -299,11 +299,16 @@ namespace ihc
 
 	double PostOhcFilter::operator()(const double x) const
 	{
+		return (*this)(x, cohc);
+	}
+
+	double PostOhcFilter::operator()(const double x, const double cohc_now) const
+	{
 		const double x1 = fabs(x);
 		double out = std::min(std::max(bm_tau_max * (min_r + (1.0 - min_r) * exp(-x1 / s0)), bm_tau_min),
 		                      bm_tau_max);
 
-		out = cohc * (out - bm_tau_min) + bm_tau_min;
+		out = cohc_now * (out - bm_tau_min) + bm_tau_min;
 
 		if (1 / out < 0.0)
 			printf("The poles are in the right-half plane; system is unstable.\n");
@@ -446,7 +451,9 @@ namespace ihc
 /* local NH_Vocoder build: the per-sample loop of inner_hair_cell, shared with inner_hair_cell_stages so
    that the IHC output of both is identical by construction. Writes the IHC output (and, when c1 / c2 are
    not null, the C1 and C2 chirp-filter outputs), each shifted by the same delay_point, into arrays of
-   stimulus.n_simulation_timesteps samples (the caller zero-initialises them). */
+   stimulus.n_simulation_timesteps samples (the caller zero-initialises them). cohc_t (optional, the MOC hook):
+   per-sample OHC factor replacing the scalar cohc in the post-OHC time-constant map and, with cohc_t[0], in the
+   wide-band filter's initial time constant. */
 static void inner_hair_cell_loop(
 	const stimulus::Stimulus& stimulus,
 	const double cf,
@@ -455,7 +462,8 @@ static void inner_hair_cell_loop(
 	const Species species,
 	double* ihc,
 	double* c1,
-	double* c2)
+	double* c2,
+	const double* cohc_t = nullptr)
 {
 	if (species == CAT)
 		utils::validate_parameter(cf, 124.9, 40.1e3, "cf");
@@ -468,12 +476,16 @@ static void inner_hair_cell_loop(
 	                          std::numeric_limits<double>::infinity(), "stimulus.simulation_duration");
 	utils::validate_parameter(cohc, 0., 1., "cohc");
 	utils::validate_parameter(cihc, 0., 1., "cihc");
+	if (cohc_t != nullptr)
+		for (size_t n = 0; n < stimulus.n_simulation_timesteps; n++)
+			utils::validate_parameter(cohc_t[n], 0., 1., "cohc_t");
+	const double cohc0 = cohc_t != nullptr ? cohc_t[0] : cohc;
 
 	ihc::MiddleEarFilter me_filter(stimulus.time_resolution, species);
-	ihc::WideBandGammaToneFilter wb_filter(stimulus.time_resolution, cf, species, cohc);
+	ihc::WideBandGammaToneFilter wb_filter(stimulus.time_resolution, cf, species, cohc0);
 	ihc::BoltzmanFilter boltzman_filter{7.0};
 	ihc::LowPassFilter<2> ohc_low_pass_filter(stimulus.time_resolution, 600.);
-	ihc::PostOhcFilter non_linear_after_ohc_filter{cohc, wb_filter.bm_tau_min, wb_filter.bm_tau_max, 7.0};
+	ihc::PostOhcFilter non_linear_after_ohc_filter{cohc0, wb_filter.bm_tau_min, wb_filter.bm_tau_max, 7.0};
 	ihc::ChirpFilter c1_chirp_filter{ stimulus.time_resolution, cf, wb_filter.bm_tau_max, true};
 	ihc::ChirpFilter c2_chirp_filter{ stimulus.time_resolution, cf, wb_filter.bm_tau_max, false};
 	ihc::LogarithmicTransductionFunction ltf_1{0.1, 3.0};
@@ -490,7 +502,8 @@ static void inner_hair_cell_loop(
 		const double wb_out = wb_filter(me_out);
 		const double ohc_nonlinear_out = boltzman_filter(wb_out);
 		const double ohc_out = ohc_low_pass_filter(ohc_nonlinear_out);
-		const double tau_c1 = non_linear_after_ohc_filter(ohc_out);
+		const double tau_c1 = cohc_t != nullptr ? non_linear_after_ohc_filter(ohc_out, cohc_t[n])
+		                                        : non_linear_after_ohc_filter(ohc_out);
 
 		wb_filter.shift_poles(tau_c1, n);
 
@@ -541,5 +554,39 @@ std::vector<double> inner_hair_cell_stages(
 	std::vector<double> output(3 * n_sim);
 	inner_hair_cell_loop(stimulus, cf, cohc, cihc, species, output.data() + 2 * n_sim, output.data(),
 	                     output.data() + n_sim);
+	return output;
+}
+
+static void check_cohc_t_length(const stimulus::Stimulus& stimulus, const std::vector<double>& cohc_t)
+{
+	if (cohc_t.size() < stimulus.n_simulation_timesteps)
+		throw std::invalid_argument("cohc_t needs at least n_simulation_timesteps values");
+}
+
+std::vector<double> inner_hair_cell_tv(
+	const stimulus::Stimulus& stimulus,
+	const double cf,
+	const std::vector<double>& cohc_t,
+	const double cihc,
+	const Species species)
+{
+	check_cohc_t_length(stimulus, cohc_t);
+	std::vector<double> output(stimulus.n_simulation_timesteps);
+	inner_hair_cell_loop(stimulus, cf, 1.0, cihc, species, output.data(), nullptr, nullptr, cohc_t.data());
+	return output;
+}
+
+std::vector<double> inner_hair_cell_stages_tv(
+	const stimulus::Stimulus& stimulus,
+	const double cf,
+	const std::vector<double>& cohc_t,
+	const double cihc,
+	const Species species)
+{
+	check_cohc_t_length(stimulus, cohc_t);
+	const size_t n_sim = stimulus.n_simulation_timesteps;
+	std::vector<double> output(3 * n_sim);
+	inner_hair_cell_loop(stimulus, cf, 1.0, cihc, species, output.data() + 2 * n_sim, output.data(),
+	                     output.data() + n_sim, cohc_t.data());
 	return output;
 }
