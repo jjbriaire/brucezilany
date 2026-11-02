@@ -104,7 +104,8 @@ void Neurogram::evaluate_fiber(
 	const NoiseType noise_type,
 	const PowerLaw power_law,
 	const Fiber &fiber,
-	const size_t cf_i)
+	const size_t cf_i,
+	const size_t fiber_i)
 {
 	const auto pla = synapse_mapping::map(
 		ihc,
@@ -114,7 +115,7 @@ void Neurogram::evaluate_fiber(
 		SOFTPLUS);
 
 	for(int i = 0; i < n_trials; i++) {
-		auto rng = utils::RandomGenerator(utils::SEED + (1 + cf_i) * (1 + i) * 1500);
+		auto rng = utils::RandomGenerator(utils::fiber_seed(cf_i, fiber_i, i));
 		const auto out = synapse(
 			pla,
 			cfs_[cf_i],
@@ -157,16 +158,16 @@ void Neurogram::evaluate_cf(
 
 
 	auto evaluate_fiber_ = [this, n_rep, n_trials, noise_type, power_law, cf_i, &ihc, &sound_wave](
-		int idx, const Fiber& fiber
+		int idx, const Fiber& fiber, const size_t fiber_i
 	){
-		return this->evaluate_fiber(sound_wave, ihc, n_rep, n_trials, noise_type, power_law, fiber, cf_i);
+		return this->evaluate_fiber(sound_wave, ihc, n_rep, n_trials, noise_type, power_law, fiber, cf_i, fiber_i);
 	};
 	
 	std::vector<std::future<void>> futures;
 	futures.reserve(fibers.size());
 
 	for (size_t f_id = 0; f_id < fibers.size(); f_id++) 
-		futures.push_back(pool_.push(evaluate_fiber_, fibers[f_id]));
+		futures.push_back(pool_.push(evaluate_fiber_, fibers[f_id], f_id));
 
 	for (auto& future : futures)
 		future.get();

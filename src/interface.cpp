@@ -280,6 +280,9 @@ void define_utils(py::module m)
 {
     using namespace utils;
     m.def("set_seed", &set_seed);
+    m.def("set_legacy_seeding", &set_legacy_seeding, py::arg("legacy"),
+          "Pre-nhv4 neurogram seeding (every fibre of a CF and trial shared one random stream); for comparison only");
+    m.def("fiber_seed", &fiber_seed, py::arg("cf_i"), py::arg("fiber_i"), py::arg("trial_i"));
 
     py::class_<RandomGenerator>(m, "RandomGenerator")
         .def(py::init<size_t>(), py::arg("seed") = SEED)

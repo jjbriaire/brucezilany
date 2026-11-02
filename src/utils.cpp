@@ -1,6 +1,7 @@
 #include <filesystem>
 #include <fstream>
 #include "utils.h"
+#include <cstdint>
 #include "resample.h"
 #include <cassert>
 
@@ -88,10 +89,30 @@ namespace
 namespace utils
 {
 	int SEED = 42;
+	bool LEGACY_SEEDING = false;
 
 	void set_seed(const int seed)
 	{
 		SEED = seed;
+	}
+
+	void set_legacy_seeding(const bool legacy)
+	{
+		LEGACY_SEEDING = legacy;
+	}
+
+	size_t fiber_seed(const size_t cf_i, const size_t fiber_i, const size_t trial_i)
+	{
+		if (LEGACY_SEEDING)
+			return static_cast<size_t>(SEED + (1 + cf_i) * (1 + trial_i) * 1500);
+		uint64_t z = static_cast<uint64_t>(static_cast<int64_t>(SEED)) * 0x9E3779B97F4A7C15ULL;
+		z ^= (static_cast<uint64_t>(cf_i) + 1) * 0xBF58476D1CE4E5B9ULL;
+		z ^= (static_cast<uint64_t>(fiber_i) + 1) * 0x94D049BB133111EBULL;
+		z ^= (static_cast<uint64_t>(trial_i) + 1) * 0xD6E8FEB86659FD93ULL;
+		z = (z ^ (z >> 30)) * 0xBF58476D1CE4E5B9ULL;
+		z = (z ^ (z >> 27)) * 0x94D049BB133111EBULL;
+		z ^= z >> 31;
+		return static_cast<size_t>(z & 0xFFFFFFFFULL);  // std::mt19937 takes 32 bits
 	}
 
 	std::vector<double> fast_fractional_gaussian_noise(RandomGenerator& rng, const int n_out, const NoiseType noise, const double mu)

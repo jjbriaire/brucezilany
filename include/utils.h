@@ -57,6 +57,21 @@ namespace utils
 	*/
 	void set_seed(int seed);
 
+	//! Pre-nhv4 neurogram seeding (SEED + (1 + cf) * (1 + trial) * 1500 for every fibre of a CF): for comparison only
+	extern bool LEGACY_SEEDING;
+
+	/**
+	* Use the pre-nhv4 neurogram seeding, in which all fibres of one CF and trial drew the same random stream and
+	* (cf, trial) pairs with equal products collided. Off by default; only to reproduce old neurograms.
+	*/
+	void set_legacy_seeding(bool legacy);
+
+	/**
+	* The seed of one fibre's spike train in a neurogram: SEED mixed with the CF index, the fibre index within the CF
+	* and the trial index (splitmix64 finaliser), so every (cf, fibre, trial) draws its own stream.
+	*/
+	size_t fiber_seed(size_t cf_i, size_t fiber_i, size_t trial_i);
+
 	struct RandomGenerator {
 		std::mt19937 gen;
 		std::uniform_real_distribution<double> uniform;

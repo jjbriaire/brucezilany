@@ -101,7 +101,8 @@ public:
 		NoiseType noise_type,
 		PowerLaw power_law,
 		const Fiber &fiber,
-		size_t cf_i
+		size_t cf_i,
+		size_t fiber_i
 	);
 
 	[[nodiscard]] std::vector<std::vector<std::vector<double>>> get_output() const
