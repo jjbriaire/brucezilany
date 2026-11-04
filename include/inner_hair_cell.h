@@ -11,14 +11,19 @@
 namespace ihc
 {
 	/**
-	* NH_Vocoder (nhv5): below this CF (Hz) the C1 chirp filter keeps its zeros at their rest position instead of re-placing
-	* them every sample to hold the phase at CF (Zilany & Bruce 2006 Eq. 15). Re-placing the zeros cancels the pole-shift gain at
-	* low CF (no apical amplifier); fixed zeros with an equal pole shift is the Tan & Carney (2003) design (level-independent
-	* glide). 0 (default) = original BEZ2018a behaviour at every CF.
+	* NH_Vocoder (nhv5/nhv6): up to C1_FIXED_ZERO_CF (Hz) the C1 chirp filter keeps its zeros at their rest position instead of
+	* re-placing them every sample to hold the phase at CF (Zilany & Bruce 2006 Eq. 15). Re-placing the zeros cancels the pole-shift
+	* gain at low CF (no apical amplifier); fixed zeros with an equal pole shift is the Tan & Carney (2003) design (level-independent
+	* glide). Between C1_FIXED_ZERO_CF and C1_FIXED_ZERO_CF * 2^C1_FIXED_ZERO_OCT the zero position is a raised-cosine (in log CF)
+	* blend of rest and re-placed (nhv6; octaves 0 = the nhv5 hard switch). C1_FIXED_ZERO_CF 0 (default) = original BEZ2018a.
 	*/
 	extern double C1_FIXED_ZERO_CF;
-	void set_c1_fixed_zero_cf(double cf_hz);
+	extern double C1_FIXED_ZERO_OCT;
+	void set_c1_fixed_zero_cf(double cf_hz, double octaves = 0.0);
 	double get_c1_fixed_zero_cf();
+	double get_c1_fixed_zero_octaves();
+	//! weight of the re-placed zero position at this CF: 0 = fixed (rest), 1 = re-placed (original)
+	double c1_zero_weight(double cf_hz);
 
 	double delay_cat(double cf);
 
@@ -141,7 +146,8 @@ namespace ihc
 		double fs_bi_linear;
 		double gain_denominator;
 		bool c1;
-		bool fixed_zero; //!< C1 below C1_FIXED_ZERO_CF: r0 stays at its rest value
+		double zero_w; //!< 1 = zeros re-placed every sample (original); 0 = fixed at r0_rest; between: blend
+		double r0_rest;
 
 		ChirpFilter(double time_resolution, double cf_in, double bm_tau_max, bool c1 = true);
 

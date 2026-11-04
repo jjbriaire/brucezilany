@@ -65,15 +65,36 @@ namespace
 namespace ihc
 {
 	double C1_FIXED_ZERO_CF = 0.0;
+	double C1_FIXED_ZERO_OCT = 0.0;
 
-	void set_c1_fixed_zero_cf(const double cf_hz)
+	void set_c1_fixed_zero_cf(const double cf_hz, const double octaves)
 	{
 		C1_FIXED_ZERO_CF = cf_hz;
+		C1_FIXED_ZERO_OCT = std::max(octaves, 0.0);
 	}
 
 	double get_c1_fixed_zero_cf()
 	{
 		return C1_FIXED_ZERO_CF;
+	}
+
+	double get_c1_fixed_zero_octaves()
+	{
+		return C1_FIXED_ZERO_OCT;
+	}
+
+	double c1_zero_weight(const double cf_hz)
+	{
+		if (C1_FIXED_ZERO_CF <= 0.0)
+			return 1.0;
+		if (C1_FIXED_ZERO_OCT <= 0.0)
+			return cf_hz < C1_FIXED_ZERO_CF ? 0.0 : 1.0;
+		const double x = log2(cf_hz / C1_FIXED_ZERO_CF) / C1_FIXED_ZERO_OCT;
+		if (x <= 0.0)
+			return 0.0;
+		if (x >= 1.0)
+			return 1.0;
+		return 0.5 - 0.5 * cos(0.5 * TWO_PI * x);
 	}
 
 	/* -------------------------------------------------------------------------------------------- */
@@ -366,7 +387,8 @@ namespace ihc
 		fs_bi_linear{cf / tan(cf * time_resolution / 2)},
 		gain_denominator{pow(sqrt(cf * cf + r0 * r0), 5)},
 		c1(c1),
-		fixed_zero(c1 && cf_in < C1_FIXED_ZERO_CF)
+		zero_w(c1 ? c1_zero_weight(cf_in) : 1.0),
+		r0_rest(-(pow(10, log10(cf_in) * 0.7 + 1.6) + 500))
 
 	{
 		fill_phase_array(0.0);
@@ -425,8 +447,11 @@ namespace ihc
 			phase = phase - atan((cf - p.imag()) / -p.real()) - atan((cf + p.imag()) / -p.real());
 		}
 
-		if (!fixed_zero) /* nhv5: fixed zeros keep the pole-shift gain (Tan & Carney 2003) */
+		if (zero_w >= 1.0)
 			r0 = -cf / tan((init_phase - phase) / order_of_zero);
+		else if (zero_w > 0.0) /* nhv6: blend of rest and re-placed zeros (smooth crossover in CF) */
+			r0 = r0_rest + zero_w * (-cf / tan((init_phase - phase) / order_of_zero) - r0_rest);
+		/* zero_w == 0: fixed zeros keep the pole-shift gain (Tan & Carney 2003) */
 
 		if (r0 > 0.0)
 			printf("The zeros are in the right-half plane.\n");

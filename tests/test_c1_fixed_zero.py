@@ -33,3 +33,18 @@ def test_fixed_zeros_restore_apical_ohc_gain_and_leave_high_cf():
         bz.set_c1_fixed_zero_cf(0.0)
     assert moving < 1.0          # original: no amplifier at 125 Hz (cohc 1 -> 0 changes C1 by about -1 dB)
     assert 9.0 < fixed < 14.0    # fixed zeros: about 12 dB
+
+
+def test_smooth_crossover_has_no_gain_jump():
+    """nhv6: raised-cosine blend over one octave above the set CF; the OHC gain (cohc 1 -> 0) has no step at 1 kHz."""
+    cfs = [900.0, 990.0, 1010.0, 1100.0, 1400.0, 1900.0, 2100.0]
+    try:
+        bz.set_c1_fixed_zero_cf(1000.0, 1.0)
+        assert bz.c1_zero_weight(999.0) == 0.0 and bz.c1_zero_weight(2001.0) == 1.0
+        g = [c1_rms(cf, 10.0) - c1_rms(cf, 10.0, cohc=0.0) for cf in cfs]
+        bz.set_c1_fixed_zero_cf(1000.0)  # hard switch (nhv5)
+        hard = [c1_rms(cf, 10.0) - c1_rms(cf, 10.0, cohc=0.0) for cf in (990.0, 1010.0)]
+    finally:
+        bz.set_c1_fixed_zero_cf(0.0)
+    assert abs(g[2] - g[1]) < 1.0           # smooth across 1 kHz
+    assert hard[0] - hard[1] > 4.0           # the nhv5 hard switch steps there
