@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 
 #include <array>
@@ -10,6 +10,16 @@
 
 namespace ihc
 {
+	/**
+	* NH_Vocoder (nhv5): below this CF (Hz) the C1 chirp filter keeps its zeros at their rest position instead of re-placing
+	* them every sample to hold the phase at CF (Zilany & Bruce 2006 Eq. 15). Re-placing the zeros cancels the pole-shift gain at
+	* low CF (no apical amplifier); fixed zeros with an equal pole shift is the Tan & Carney (2003) design (level-independent
+	* glide). 0 (default) = original BEZ2018a behaviour at every CF.
+	*/
+	extern double C1_FIXED_ZERO_CF;
+	void set_c1_fixed_zero_cf(double cf_hz);
+	double get_c1_fixed_zero_cf();
+
 	double delay_cat(double cf);
 
 	struct MiddleEarFilter
@@ -131,6 +141,7 @@ namespace ihc
 		double fs_bi_linear;
 		double gain_denominator;
 		bool c1;
+		bool fixed_zero; //!< C1 below C1_FIXED_ZERO_CF: r0 stays at its rest value
 
 		ChirpFilter(double time_resolution, double cf_in, double bm_tau_max, bool c1 = true);
 

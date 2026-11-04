@@ -282,6 +282,9 @@ void define_utils(py::module m)
     m.def("set_seed", &set_seed);
     m.def("set_legacy_seeding", &set_legacy_seeding, py::arg("legacy"),
           "Pre-nhv4 neurogram seeding (every fibre of a CF and trial shared one random stream); for comparison only");
+    m.def("set_c1_fixed_zero_cf", &ihc::set_c1_fixed_zero_cf, py::arg("cf_hz"),
+          "nhv5: below this CF (Hz) the C1 filter keeps its zeros fixed (realises the cochlear-amplifier gain at low CF); 0 = original BEZ2018a");
+    m.def("get_c1_fixed_zero_cf", &ihc::get_c1_fixed_zero_cf);
     m.def("fiber_seed", &fiber_seed, py::arg("cf_i"), py::arg("fiber_i"), py::arg("trial_i"));
 
     py::class_<RandomGenerator>(m, "RandomGenerator")

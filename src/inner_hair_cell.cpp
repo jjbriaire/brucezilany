@@ -64,6 +64,18 @@ namespace
 
 namespace ihc
 {
+	double C1_FIXED_ZERO_CF = 0.0;
+
+	void set_c1_fixed_zero_cf(const double cf_hz)
+	{
+		C1_FIXED_ZERO_CF = cf_hz;
+	}
+
+	double get_c1_fixed_zero_cf()
+	{
+		return C1_FIXED_ZERO_CF;
+	}
+
 	/* -------------------------------------------------------------------------------------------- */
 	/** Calculate the delay (basilar membrane, synapse, etc. for cat) */
 	double delay_cat(const double cf)
@@ -353,7 +365,8 @@ namespace ihc
 		r0{-(pow(10, log10(cf_in) * 0.7 + 1.6) + 500)},
 		fs_bi_linear{cf / tan(cf * time_resolution / 2)},
 		gain_denominator{pow(sqrt(cf * cf + r0 * r0), 5)},
-		c1(c1)
+		c1(c1),
+		fixed_zero(c1 && cf_in < C1_FIXED_ZERO_CF)
 
 	{
 		fill_phase_array(0.0);
@@ -412,7 +425,8 @@ namespace ihc
 			phase = phase - atan((cf - p.imag()) / -p.real()) - atan((cf + p.imag()) / -p.real());
 		}
 
-		r0 = -cf / tan((init_phase - phase) / order_of_zero);
+		if (!fixed_zero) /* nhv5: fixed zeros keep the pole-shift gain (Tan & Carney 2003) */
+			r0 = -cf / tan((init_phase - phase) / order_of_zero);
 
 		if (r0 > 0.0)
 			printf("The zeros are in the right-half plane.\n");
