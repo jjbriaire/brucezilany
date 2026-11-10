@@ -25,6 +25,14 @@ namespace ihc
 	//! weight of the re-placed zero position at this CF: 0 = fixed (rest), 1 = re-placed (original)
 	double c1_zero_weight(double cf_hz);
 
+	/* nhv7: lower clip of the cochlear-amplifier gain law (dB; original BEZ2018a 15). The law
+	 * clip(26 (tanh(2.2 log10(CF / 600) + 0.15) + 1), floor, 60) sets the range of the C1 and control-path time constants, i.e. the
+	 * OHC gain (cohc 1 -> 0) and the compression at that CF; the low-level (tau_max) tuning is unchanged. */
+	extern double GAIN_FLOOR_DB;
+	void set_gain_floor_db(double db);
+	double get_gain_floor_db();
+	double ohc_gain_db(double cf);
+
 	double delay_cat(double cf);
 
 	struct MiddleEarFilter

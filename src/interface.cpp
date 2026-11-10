@@ -288,6 +288,10 @@ void define_utils(py::module m)
     m.def("get_c1_fixed_zero_cf", &ihc::get_c1_fixed_zero_cf);
     m.def("get_c1_fixed_zero_octaves", &ihc::get_c1_fixed_zero_octaves);
     m.def("c1_zero_weight", &ihc::c1_zero_weight, py::arg("cf_hz"));
+    m.def("set_gain_floor_db", &ihc::set_gain_floor_db, py::arg("db"),
+          "nhv7: lower clip (dB) of BEZ2018a's CF-dependent cochlear-amplifier gain law (original 15; process-global)");
+    m.def("get_gain_floor_db", &ihc::get_gain_floor_db);
+    m.def("ohc_gain_db", &ihc::ohc_gain_db, py::arg("cf_hz"));
     m.def("fiber_seed", &fiber_seed, py::arg("cf_i"), py::arg("fiber_i"), py::arg("trial_i"));
 
     py::class_<RandomGenerator>(m, "RandomGenerator")

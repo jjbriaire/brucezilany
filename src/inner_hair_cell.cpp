@@ -66,6 +66,22 @@ namespace ihc
 {
 	double C1_FIXED_ZERO_CF = 0.0;
 	double C1_FIXED_ZERO_OCT = 0.0;
+	double GAIN_FLOOR_DB = 15.0;
+
+	void set_gain_floor_db(const double db)
+	{
+		GAIN_FLOOR_DB = std::min(std::max(db, 0.0), 60.0);
+	}
+
+	double get_gain_floor_db()
+	{
+		return GAIN_FLOOR_DB;
+	}
+
+	double ohc_gain_db(const double cf)
+	{
+		return std::max(std::min(52.0 / 2.0 * (tanh(2.2 * log10(cf / 0.6e3) + 0.15) + 1.0), 60.0), GAIN_FLOOR_DB);
+	}
 
 	void set_c1_fixed_zero_cf(const double cf_hz, const double octaves)
 	{
@@ -195,7 +211,7 @@ namespace ihc
 		delta_phase(-TWO_PI * center_freq * time_resolution),
 		phase(0.0)
 	{
-		const double gain = std::max(std::min(52.0 / 2.0 * (tanh(2.2 * log10(cf / 0.6e3) + 0.15) + 1.0), 60.0), 15.0);
+		const double gain = ohc_gain_db(cf);  /* nhv7: floor settable (set_gain_floor_db), 15 dB = original */
 		const double ratio = pow(10, (-gain / (20.0 * order)));
 		const double bw = cf / get_q10(cf, species);
 		tau_max = 2.0 / (TWO_PI * bw);
